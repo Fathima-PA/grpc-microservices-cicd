@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package order;
+
+service OrderService {
+  rpc GetOrdersByUser (GetOrdersByUserRequest)
+      returns (GetOrdersByUserResponse);
+}
+
+message GetOrdersByUserRequest {
+  string userId = 1;
+}
+
+message Order {
+  string id = 1;
+  string userId = 2;
+  string product = 3;
+  double amount = 4;
+  string status = 5;
+}
+
+message GetOrdersByUserResponse {
+  repeated Order orders = 1;
+}

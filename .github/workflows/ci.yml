@@ -1,0 +1,59 @@
+
+name: gRPC Microservices CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Install, Validate and Build
+    runs-on: ubuntu-latest
+
+    env:
+      POSTGRES_PASSWORD: ci-only-password
+
+    steps:
+      # 1. Download source code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Configure Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            user-service/package-lock.json
+            order-service/package-lock.json
+
+      # 3. Install UserService dependencies
+      - name: Install UserService dependencies
+        working-directory: user-service
+        run: npm ci
+
+      # 4. Install OrderService dependencies
+      - name: Install OrderService dependencies
+        working-directory: order-service
+        run: npm ci
+
+      # 5. Generate Prisma Client
+      - name: Generate Prisma Client
+        working-directory: order-service
+        env:
+          DATABASE_URL: postgresql://appuser:ci-only-password@localhost:5432/orders_db?schema=public
+        run: npx prisma generate
+
+      # 6. Validate Docker Compose
+      - name: Validate Docker Compose
+        run: docker compose config --quiet
+
+      # 7. Build microservices Docker images
+      - name: Build Docker images
+        run: docker compose build

@@ -1,0 +1,79 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: user-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: users_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:16
+    container_name: order-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: orders_db
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d orders_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  order-service:
+    build: ./order-service
+    restart: unless-stopped
+    environment:
+      PORT: "50051"
+      DATABASE_URL: postgresql://appuser:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/orders_db?schema=public
+    ports:
+      - "50051:50051"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - microservices-network
+
+  user-service:
+    build: ./user-service
+    restart: unless-stopped
+    ports:
+      - "3003:3001"
+      - "50052:50052"
+    environment:
+      PORT: "3001"
+      USER_GRPC_PORT: "50052"
+      MONGO_URI: mongodb://mongodb:27017/users_db
+      ORDER_GRPC_URL: order-service:50051
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      order-service:
+        condition: service_started
+    networks:
+      - microservices-network
+
+volumes:
+  mongo-data:
+  postgres-data:
+
+networks:
+  microservices-network:
+    driver: bridge
