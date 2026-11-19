@@ -21,7 +21,7 @@ spec:
       containers:
         - name: user-service
           image: fathimapa123/grpc-microservices-cicd:user-service-latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 3001
             - containerPort: 50052

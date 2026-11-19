@@ -21,7 +21,7 @@ spec:
       containers:
         - name: order-service
           image: fathimapa123/grpc-microservices-cicd:order-service-latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 3002
             - containerPort: 50051
@@ -40,3 +40,5 @@ spec:
                 secretKeyRef:
                   name: microservices-secret
                   key: JWT_SECRET
+            - name: USER_GRPC_URL
+              value: "user-service:50052"

@@ -2,10 +2,11 @@
   "name": "user-service",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
-  },
+"scripts": {
+  "start": "node src/server.js",
+  "dev": "node --watch src/server.js",
+  "test": "node --test"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",

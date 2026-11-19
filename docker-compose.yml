@@ -50,6 +50,7 @@ services:
       HTTP_PORT: "3002"
       DATABASE_URL: postgresql://appuser:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/orders_db?schema=public
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      USER_GRPC_URL: user-service:50052
     ports:
       - "50051:50051"
       - "3004:3002"

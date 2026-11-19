@@ -1,6 +1,6 @@
 
 const { PrismaClient } = require("@prisma/client");
-
+const { getUserById } = require("../grpc/userClient");
 const prisma = new PrismaClient();
 
 exports.createOrder = async (req, res) => {
@@ -132,13 +132,35 @@ exports.updateOrder = async (req, res) => {
       });
     }
 
-    if (
-      order.userId !== req.user.userId &&
-      req.user.role !== "admin"
-    ) {
-      return res.status(403).json({
-        message: "Access denied",
-      });
+    const userId = req.user.userId;
+
+    // Check whether the logged-in user owns this order
+    if (order.userId !== userId) {
+      // Only JWT users claiming to be admins need role verification
+      if (req.user.role !== "admin") {
+        return res.status(403).json({
+          message: "Access denied",
+        });
+      }
+
+      // Verify the admin's actual role through User Service gRPC
+      let user;
+
+      try {
+        user = await getUserById(userId);
+      } catch (grpcError) {
+        console.error("User Service gRPC error:", grpcError.message);
+
+        return res.status(503).json({
+          message: "Unable to verify admin role. User Service unavailable.",
+        });
+      }
+
+      if (user.role !== "admin") {
+        return res.status(403).json({
+          message: "Access denied. Admin verification failed.",
+        });
+      }
     }
 
     const updatedOrder = await prisma.order.update({

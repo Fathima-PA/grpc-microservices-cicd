@@ -1,4 +1,3 @@
-
 name: gRPC Microservices CI/CD
 
 on:
@@ -14,7 +13,6 @@ permissions:
   contents: read
 
 jobs:
-
   validate:
     name: Install and Validate
     runs-on: ubuntu-latest
@@ -93,4 +91,64 @@ jobs:
         with:
           context: ${{ matrix.service.context }}
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          tags: fathimapa123/grpc-microservices-cicd:${{ matrix.service.image }}
+          tags: |
+            fathimapa123/grpc-microservices-cicd:${{ matrix.service.image }}
+            fathimapa123/grpc-microservices-cicd:${{ matrix.service.name }}-${{ github.sha }}
+
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: [self-hosted, Windows, X64]
+    needs: build
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Check Kubernetes connection
+        shell: powershell
+        run: |
+          kubectl config current-context
+          kubectl get nodes
+
+      - name: Deploy API Gateway
+        shell: powershell
+        run: |
+          kubectl set image deployment/gateway gateway=fathimapa123/grpc-microservices-cicd:api-gateway-${{ github.sha }}
+
+      - name: Deploy User Service
+        shell: powershell
+        run: |
+          kubectl set image deployment/user-service user-service=fathimapa123/grpc-microservices-cicd:user-service-${{ github.sha }}
+
+      - name: Deploy Order Service
+        shell: powershell
+        run: |
+          kubectl set image deployment/order-service order-service=fathimapa123/grpc-microservices-cicd:order-service-${{ github.sha }}
+
+      - name: Verify Kubernetes deployment
+        shell: powershell
+        run: |
+          kubectl rollout status deployment/gateway --timeout=180s
+          kubectl rollout status deployment/user-service --timeout=180s
+          kubectl rollout status deployment/order-service --timeout=180s
+
+      - name: Display deployment status
+        shell: powershell
+        run: |
+          kubectl get deployments
+          kubectl get pods
+
+      - name: Rollback deployment
+        if: failure()
+        shell: powershell
+        run: |
+          Write-Host "Deployment failed. Starting rollback..."
+
+          kubectl rollout undo deployment/gateway
+          kubectl rollout undo deployment/user-service
+          kubectl rollout undo deployment/order-service
+
+          kubectl rollout status deployment/gateway --timeout=180s
+          kubectl rollout status deployment/user-service --timeout=180s
+          kubectl rollout status deployment/order-service --timeout=180s
+
+          Write-Host "Rollback completed."
