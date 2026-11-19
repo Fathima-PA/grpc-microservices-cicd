@@ -1,3 +1,4 @@
+﻿
 services:
   mongodb:
     image: mongo:7
@@ -37,22 +38,35 @@ services:
       timeout: 5s
       retries: 5
 
+
   order-service:
-    build: ./order-service
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    image: fathimapa123/grpc-microservices-cicd:order-service-latest
     restart: unless-stopped
     environment:
-      PORT: "50051"
+      GRPC_PORT: "50051"
+      HTTP_PORT: "3002"
       DATABASE_URL: postgresql://appuser:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/orders_db?schema=public
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
     ports:
       - "50051:50051"
+      - "3004:3002"
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - microservices-network
 
+
+
+
   user-service:
-    build: ./user-service
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    image: fathimapa123/grpc-microservices-cicd:user-service-latest
     restart: unless-stopped
     ports:
       - "3003:3001"
@@ -60,13 +74,35 @@ services:
     environment:
       PORT: "3001"
       USER_GRPC_PORT: "50052"
+      NODE_OPTIONS: --experimental-global-webcrypto
       MONGO_URI: mongodb://mongodb:27017/users_db
       ORDER_GRPC_URL: order-service:50051
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_EXPIRES_IN: 24h
     depends_on:
       mongodb:
         condition: service_healthy
       order-service:
         condition: service_started
+    networks:
+      - microservices-network
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      USER_SERVICE_URL: http://user-service:3001
+      ORDER_SERVICE_URL: http://order-service:3002
+    depends_on:
+      - user-service
+      - order-service
     networks:
       - microservices-network
 

@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,11 +8,13 @@ datasource db {
 }
 
 model Order {
-  id      String @id @default(uuid())
-  userId  String
-  product String
-  amount  Float
-  status  String @default("PENDING")
+  id        String   @id @default(uuid())
+  userId    String
+  product   String
+  amount    Float
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@index([userId])
 }

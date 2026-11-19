@@ -15,3 +15,8 @@ npm-debug.log*
 # System files
 .DS_Store
 Thumbs.db
+
+
+# Docker image archives
+*.tar
+*.tar.gz

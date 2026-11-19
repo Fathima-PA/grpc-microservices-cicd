@@ -1,13 +1,28 @@
 
 require("dotenv").config();
 
+const express = require("express");
 const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
 const { PrismaClient } = require("@prisma/client");
 const path = require("path");
 
 const prisma = new PrismaClient();
+const app = express();
 
+app.use(express.json());
+
+// HTTP Order routes
+app.use("/orders", require("./routes/orderRoutes"));
+
+// Health check
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    message: "Order Service is running",
+  });
+});
+
+// gRPC configuration
 const PROTO_PATH = path.join(__dirname, "../proto/order.proto");
 
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
@@ -58,14 +73,24 @@ async function startServer() {
   await prisma.$connect();
   console.log("Order database connected (PostgreSQL)");
 
-  const server = new grpc.Server();
+  // Start HTTP server
+  const HTTP_PORT = process.env.HTTP_PORT || 3002;
 
-  server.addService(proto.OrderService.service, {
+  const httpServer = app.listen(HTTP_PORT, "0.0.0.0", () => {
+    console.log(`Order HTTP API listening on ${HTTP_PORT}`);
+  });
+
+  // Start gRPC server
+  const grpcServer = new grpc.Server();
+
+  grpcServer.addService(proto.OrderService.service, {
     getOrdersByUser,
   });
 
-  server.bindAsync(
-    `0.0.0.0:${process.env.PORT || 50051}`,
+  const GRPC_PORT = process.env.GRPC_PORT || 50051;
+
+  grpcServer.bindAsync(
+    `0.0.0.0:${GRPC_PORT}`,
     grpc.ServerCredentials.createInsecure(),
     (error, port) => {
       if (error) {
@@ -73,12 +98,15 @@ async function startServer() {
         process.exit(1);
       }
 
-      console.log(`Order Service listening on ${port}`);
+      console.log(`Order gRPC server listening on ${port}`);
     }
   );
 
+  // Graceful shutdown
   const shutdown = async () => {
-    server.tryShutdown(async () => {
+    httpServer.close();
+
+    grpcServer.tryShutdown(async () => {
       await prisma.$disconnect();
       process.exit(0);
     });

@@ -12,6 +12,9 @@ const User = require("./user.model");
 const app = express();
 app.use(express.json());
 
+// Authentication routes
+app.use("/auth", require("./routes/authRoutes"));
+app.use("/users", require("./routes/userRoutes"));
 const protoOptions = {
   keepCase: false,
   longs: String,
@@ -76,24 +79,24 @@ async function getUser(call, callback) {
   }
 }
 
-// HTTP endpoint to create a user
-app.post("/users", async (req, res) => {
-  try {
-    const { name, email } = req.body;
+// // HTTP endpoint to create a user
+// app.post("/users", async (req, res) => {
+//   try {
+//     const { name, email } = req.body;
 
-    if (!name || !email) {
-      return res.status(400).json({
-        error: "Name and email are required",
-      });
-    }
+//     if (!name || !email) {
+//       return res.status(400).json({
+//         error: "Name and email are required",
+//       });
+//     }
 
-    const user = await User.create({ name, email });
+//     const user = await User.create({ name, email });
 
-    return res.status(201).json(user);
-  } catch (error) {
-    return res.status(400).json({ error: error.message });
-  }
-});
+//     return res.status(201).json(user);
+//   } catch (error) {
+//     return res.status(400).json({ error: error.message });
+//   }
+// });
 
 // HTTP endpoint: User Service calls Order Service via gRPC
 app.get("/users/:userId/orders", async (req, res) => {

@@ -1,0 +1,51 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: user-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: user-service
+          image: fathimapa123/grpc-microservices-cicd:user-service-latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3001
+            - containerPort: 50052
+          env:
+            - name: PORT
+              value: "3001"
+            - name: USER_GRPC_PORT
+              value: "50052"
+            - name: NODE_OPTIONS
+              value: "--experimental-global-webcrypto"
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: MONGO_URI
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secret
+                  key: JWT_SECRET
+            - name: JWT_EXPIRES_IN
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secret
+                  key: JWT_EXPIRES_IN
+            - name: ORDER_GRPC_URL
+              value: "order-service:50051"
